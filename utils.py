@@ -42,8 +42,7 @@ def stock_return_values(StockValues):
     stock_return_values=["StockReturn"]
     for value in StockValues[1:]:
         try:stock_return_values.append(math.log(value / prev_value))
-        except:stock_return_values.append(0.0)
-            
+        except:stock_return_values.append(0.0)  
         prev_value = value
     return stock_return_values
 
@@ -57,14 +56,18 @@ def market_return_values(MarketValues):
         prev_value = value
     return market_return_values
 
-def get_windows(df, thres):
+def get_windows(df, thres, event_size):
     # splits the stock into an estimation window and event window based thres(threshold)
     estimatation_window = df.iloc[:, 0:thres]
-    event_window = df.iloc[:, thres:]
-    est_win_size = estimatation_window.shape[1]-1 #-1 to exclude name row 
-    eve_win_size = event_window.shape[1]
-    return est_win_size, estimatation_window, eve_win_size, event_window
+    return estimatation_window #, event_window
 
+def event_win_indexes(thres, event_frame_size, event_size):
+    c_column = int((event_frame_size-1)/2)
+    margin = int((event_size-1)/2)
+    c_column_idx = thres+c_column
+    upper_idx = c_column_idx + margin
+    lower_idx = c_column_idx - margin
+    return lower_idx, upper_idx
 
 def normal_return_values(MarketValues, slope, intercept):
     normal_return = ["NormalReturn"]
@@ -90,23 +93,22 @@ def t_stat_r(abnormal_return, stderr):
     tstat_r.insert(0,"t-stat R")
     return tstat_r
 
-def mean(df, thres):
+def mean(df, lower_idx, upper_idx):
     df_means = df.mean()
-    means = df_means[thres-1:].to_list() # Columns
-    df_means[thres:].mean() # window
+    means = df_means[lower_idx-1:upper_idx].to_list() # Columns
     return means
 
-def st_dev(df, thres):
+def st_dev(df, lower_idx, upper_idx):
     df_stds = df.std()
-    stds = df_stds[thres-1:].to_list() # Columns 
-    df_stds[thres:].std() # window
+    stds = df_stds[lower_idx-1:upper_idx].to_list() # Columns 
     return stds
 
-def t_test(df, event_size, thres):
+def t_test(df, lower_idx, upper_idx):
+    upper_idx = upper_idx+1
     aar_tstats, aar_pvalues = [],[]
-    thres = thres
-    for it in range(event_size):
-        it = it + thres
+    df = df.iloc[:,lower_idx:upper_idx]
+    for it in range(upper_idx-lower_idx):
+        it = it + lower_idx
         tstat = st.ttest_1samp(df[it].to_numpy(),popmean=0)
         aar_tstats.append(tstat[0])
         aar_pvalues.append(tstat[1])
